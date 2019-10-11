@@ -7,34 +7,21 @@ use Doctrine\ORM\Query\Lexer;
 
 /**
  * @author Alessandro Tagliapietra <tagliapietra.alessandro@gmail.com>
+ * @author Florian Guillaumin <florian.guillaumin@gmail.com>
  */
-class TimestampAdd extends FunctionNode
+class TimestampAdd extends TimestampDiff
 {
-    public $firstDatetimeExpression = null;
-
-    public $secondDatetimeExpression = null;
-
-    public $unit = null;
-
-    public function parse(\Doctrine\ORM\Query\Parser $parser)
-    {
-        $parser->match(Lexer::T_IDENTIFIER);
-        $parser->match(Lexer::T_OPEN_PARENTHESIS);
-        $parser->match(Lexer::T_IDENTIFIER);
-        $lexer = $parser->getLexer();
-        $this->unit = $lexer->token['value'];
-        $parser->match(Lexer::T_COMMA);
-        $this->firstDatetimeExpression = $parser->ArithmeticPrimary();
-        $parser->match(Lexer::T_COMMA);
-        $this->secondDatetimeExpression = $parser->ArithmeticPrimary();
-        $parser->match(Lexer::T_CLOSE_PARENTHESIS);
-    }
-
     public function getSql(\Doctrine\ORM\Query\SqlWalker $sql_walker)
     {
+        $unit = strtoupper(is_string($this->unit) ? $this->unit : $this->unit->value);
+
+        if (!in_array($unit, self::$allowedUnits)) {
+            throw QueryException::semanticalError('TIMESTAMPADD() does not support unit "' . $unit . '".');
+        }
+        
         return sprintf(
             'TIMESTAMPADD(%s, %s, %s)',
-            $this->unit,
+            $unit,
             $this->firstDatetimeExpression->dispatch($sql_walker),
             $this->secondDatetimeExpression->dispatch($sql_walker)
       );
